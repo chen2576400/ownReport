@@ -2,7 +2,7 @@ package com.df.report.service.impl;
 
 
 import com.df.report.model.PiplanActivityVo;
-import com.df.report.service.PiplanActivityService;
+import com.df.report.service.*;
 import com.df.report.util.DateUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -22,10 +22,26 @@ import java.util.Objects;
 public class PiplanActivityServiceImpl implements PiplanActivityService {
     @Autowired
     private EntityManager em;
+    @Autowired
+    FunctionApply functionApply;
+
+    @Autowired
+    private MembershipLinkService membershipLinkService;
+    @Autowired
+    private PigroupService pigroupService;
+    @Autowired
+    private PiresourceService piresourceService;
+    @Autowired
+    private PiresourceAssignmentService piresourceAssignmentService;
 
 
     @Override
     public List<PiplanActivityVo> WorkDelayTable(String[] time, List<Integer> groupIds, String projectId, String planId) throws ParseException {
+
+        List<Long> planActIds = functionApply.getPlanActIds(membershipLinkService::rolebobjectIds, piresourceService::resourceIds, piresourceAssignmentService::assignmentRsrcIds, groupIds);
+
+
+
         String startTime = null;
         String endTime = null;
         if (Objects.isNull(time)) {

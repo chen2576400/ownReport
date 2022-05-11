@@ -4,8 +4,11 @@ import com.df.report.mapper.LcStateMapper;
 import com.df.report.model.LcState;
 import com.df.report.model.MembershipLink;
 import com.df.report.model.Pigroup;
+import com.df.report.model.Piresource;
+import com.df.report.service.PiplanActivityService;
 import com.df.report.util.DateUtils;
 import com.df.report.util.EntityUtils;
+import com.google.common.collect.Lists;
 import lombok.Data;
 import org.hibernate.transform.Transformers;
 import org.junit.jupiter.api.Test;
@@ -16,6 +19,8 @@ import javax.persistence.EntityManager;
 import javax.persistence.TypedQuery;
 import javax.persistence.criteria.*;
 import java.io.Serializable;
+import java.text.ParseException;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
@@ -30,10 +35,14 @@ public class RunTest {
     LcStateMapper lcStateMapper;
     @Autowired
     private EntityManager em;
+    @Autowired
+    private PiplanActivityService piplanActivityService;
 
 
     @Test
-    public void test1() {
+
+    public void test1() throws ParseException {
+        piplanActivityService.WorkDelayTable(null,null,null,null);
 //        List<LcState> all = lcStateMapper.findAll();
 //        System.out.println(all);
 //        System.out.println("====");
@@ -53,8 +62,6 @@ public class RunTest {
     }
 
 
-
-
     @Test
     public void test2() {
         CriteriaBuilder cb = em.getCriteriaBuilder();
@@ -70,7 +77,6 @@ public class RunTest {
     }
 
 
-
     @Test
     public void test3() {
         CriteriaBuilder cb = em.getCriteriaBuilder();
@@ -79,7 +85,7 @@ public class RunTest {
         Path id = root.get("id");
         Path createStamp = root.get("createStamp");
 
-        criteriaQuery.multiselect(id,createStamp);
+        criteriaQuery.multiselect(id, createStamp);
         TypedQuery query = em.createQuery(criteriaQuery);
 
         List<Object[]> resultList = query.getResultList();
@@ -88,8 +94,6 @@ public class RunTest {
         System.out.println(resultList);
 
     }
-
-
 
 
     @Test
@@ -116,7 +120,48 @@ public class RunTest {
         System.out.println(singleResult);
 
 
+    }
 
+
+    @Test
+    public void test5() {
+        List<Long> singleResult = null;
+        {
+            CriteriaBuilder cb = em.getCriteriaBuilder();
+            CriteriaQuery criteriaQuery = cb.createQuery();
+            Root root = criteriaQuery.from(MembershipLink.class);
+            Path roleAid = root.get("roleaobjectId");
+            Path roleBid = root.get("rolebobjectId");
+            //子查询部分
+            Subquery<Pigroup> subquery = criteriaQuery.subquery(Pigroup.class);
+            Root childRoot = subquery.from(Pigroup.class);
+            Path childId = childRoot.get("id");
+            subquery.select(childId);
+            //条件
+            Predicate predicate1 = cb.in(roleAid).value(subquery);
+            criteriaQuery.select(roleBid).where(predicate1).groupBy(roleBid);
+            TypedQuery<Long> query = em.createQuery(criteriaQuery);
+            singleResult = query.getResultList();
+        }
+
+
+        List<Long> rolebobjectIds = singleResult;
+        CriteriaBuilder cb = em.getCriteriaBuilder();
+        CriteriaQuery criteriaQuery = cb.createQuery();
+        Root root = criteriaQuery.from(Piresource.class);
+        Path id = root.get("id");
+        Path userRefId = root.get("userRefId");
+
+        List<Predicate> predicates = new ArrayList<>();
+        List<List<Long>> partition = Lists.partition(rolebobjectIds, 900);
+        for (List<Long> integers : partition) {
+            predicates.add(cb.in(userRefId).value(integers));
+        }
+        Predicate or = cb.or(predicates.toArray(new Predicate[0]));
+        criteriaQuery.select(id).where(cb.and(or));
+
+        TypedQuery<Long> query = em.createQuery(criteriaQuery);
+        List<Long> ids = query.getResultList();
 
     }
 }
