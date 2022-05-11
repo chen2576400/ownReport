@@ -1,6 +1,10 @@
 package com.df.report.service;
 
 
+import com.df.report.model.PiplanActivityVo;
+
+import java.text.ParseException;
+import java.util.List;
 
 /**
 * @author chenning
@@ -8,5 +12,8 @@ package com.df.report.service;
 * @createDate 2022-05-11 16:51:14
 */
 public interface PiplanActivityService{
+
+
+    List<PiplanActivityVo> WorkDelayTable(String[] time, List<Integer> groupIds, String projectId, String planId)throws ParseException;
 
 }
