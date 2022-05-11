@@ -1,6 +1,7 @@
 package com.df.report.model;
 
 import java.io.Serializable;
+import java.sql.Timestamp;
 import java.util.Date;
 import javax.persistence.*;
 
@@ -413,10 +414,10 @@ public class PiplanActivity implements Serializable {
     private Double targetEquipQty;
 
     /**
-     * 
+     * 字段类型修改
      */
     @Column(name = "target_start_date")
-    private Date targetStartDate;
+    private Timestamp targetStartDate;
 
     /**
      * 
@@ -1543,14 +1544,14 @@ public class PiplanActivity implements Serializable {
     /**
      * 
      */
-    public Date getTargetStartDate() {
+    public Timestamp getTargetStartDate() {
         return targetStartDate;
     }
 
     /**
      * 
      */
-    public void setTargetStartDate(Date targetStartDate) {
+    public void setTargetStartDate(Timestamp targetStartDate) {
         this.targetStartDate = targetStartDate;
     }
 
