@@ -4,6 +4,8 @@ package com.df.report.mapper;
 import com.df.report.model.StexpectedFinishTime;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.List;
+
 /**
 * @author chenning
 * @description 针对表【stexpected_finish_time】的数据库操作Mapper
@@ -12,6 +14,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 */
 public interface StexpectedFinishTimeMapper extends JpaRepository<StexpectedFinishTime,Long>  {
 
+
+    List<StexpectedFinishTime> findByPlanActivityRefIdIs(Long id);
 }
 
 

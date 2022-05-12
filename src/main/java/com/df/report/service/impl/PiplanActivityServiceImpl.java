@@ -1,13 +1,13 @@
 package com.df.report.service.impl;
 
 
+import com.df.report.mapper.PiplanActivityMapper;
 import com.df.report.mapper.PiprojectMapper;
+import com.df.report.mapper.StexpectedFinishTimeMapper;
 import com.df.report.model.*;
 import com.df.report.service.*;
 import com.df.report.util.DateUtils;
 import com.df.report.util.PageResult;
-import com.df.report.util.PageVO;
-import com.df.report.util.Result;
 import com.google.common.collect.Lists;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -30,6 +30,9 @@ import java.util.*;
  */
 @Service
 public class PiplanActivityServiceImpl implements PiplanActivityService {
+
+    private final double weight = 0.7;
+
     @Autowired
     private EntityManager em;
     @Autowired
@@ -47,6 +50,13 @@ public class PiplanActivityServiceImpl implements PiplanActivityService {
     @Autowired
     PiprojectMapper piprojectMapper;
 
+
+    @Autowired
+    StexpectedFinishTimeMapper stexpectedFinishTimeMapper;
+
+    @Autowired
+    PiplanActivityMapper activityMapper;
+
     @Override
     public List<PiplanActivityVo> WorkDelayTable(String[] time, List<Integer> groupIds, String projectId, String planId, PageResult pageResult) throws ParseException {
 
@@ -60,6 +70,8 @@ public class PiplanActivityServiceImpl implements PiplanActivityService {
         } else {
             Date startDate = DateUtils.getStartTime(DateUtils.parseDate(time[0]));
             Date endDate = DateUtils.getEndTime(DateUtils.parseDate(time[1]));
+            startTime = DateUtils.format(startDate, "yyyy-MM-dd HH:mm:ss");
+            endTime = DateUtils.format(endDate, "yyyy-MM-dd HH:mm:ss");
         }
 
 
@@ -103,11 +115,11 @@ public class PiplanActivityServiceImpl implements PiplanActivityService {
             predicates.add(cb.or(or.toArray(new Predicate[0])));
         }
 
-        if (projectId!=null){
-            predicates.add(cb.equal(projectRefId,projectId));
+        if (projectId != null) {
+            predicates.add(cb.equal(projectRefId, projectId));
         }
-        if (planId!=null){
-            predicates.add(cb.equal(rootRefId,planId));
+        if (planId != null) {
+            predicates.add(cb.equal(rootRefId, planId));
         }
 
         criteriaQuery.select(root)
@@ -178,11 +190,11 @@ public class PiplanActivityServiceImpl implements PiplanActivityService {
             predicates.add(cb.or(or.toArray(new Predicate[0])));
         }
 
-        if (projectId!=null){
-            predicates.add(cb.equal(projectRefId,projectId));
+        if (projectId != null) {
+            predicates.add(cb.equal(projectRefId, projectId));
         }
-        if (planId!=null){
-            predicates.add(cb.equal(rootRefId,planId));
+        if (planId != null) {
+            predicates.add(cb.equal(rootRefId, planId));
         }
 
         criteriaQuery.select(cb.count(root)).where(predicates.toArray(new Predicate[0]));
@@ -287,6 +299,37 @@ public class PiplanActivityServiceImpl implements PiplanActivityService {
     }
 
 
+    @Override
+    public List<PertVo> pertTable(String activeId) {
+        List<StexpectedFinishTime> stexpectedFinishTimes = stexpectedFinishTimeMapper.findByPlanActivityRefIdIs(Long.valueOf(activeId));
+        List<PertVo> pertVos = new ArrayList<>();
+        for (StexpectedFinishTime stexpectedFinishTime : stexpectedFinishTimes) {
+            Optional<PiplanActivity> opAct = activityMapper.findById(stexpectedFinishTime.getPlanActivityRefId());
+            if (opAct.isPresent()) {
+                PiplanActivity piplanActivity = opAct.get();
+                PertVo pertVo = new PertVo();
+                pertVo.setTaskStart(piplanActivity.getTargetStartDate() == null ? "" : DateUtils.getDateToString(piplanActivity.getTargetStartDate().getTime(), "yyyy-MM-dd HH:mm:ss"));
+                pertVo.setTaskComplete(piplanActivity.getTargetEndDate() == null ? "" : DateUtils.getDateToString(piplanActivity.getTargetEndDate().getTime(), "yyyy-MM-dd HH:mm:ss"));
+                pertVo.setEstimatedCompletion(stexpectedFinishTime.getExpectedFinishTime() == null ? "" : DateUtils.getDateToString(stexpectedFinishTime.getExpectedFinishTime().getTime(), "yyyy-MM-dd HH:mm:ss"));
+                pertVo.setActualStart(piplanActivity.getActualStartDate() == null ? "" : DateUtils.getDateToString(piplanActivity.getActualStartDate().getTime(), "yyyy-MM-dd HH:mm:ss"));
+                Long aLong1 = Optional.ofNullable(DateUtils.parseDate(StringUtils.defaultIfBlank(pertVo.getTaskComplete(), ""))).orElse(0L);
+                Long aLong2 = Optional.ofNullable(DateUtils.parseDate(StringUtils.defaultIfBlank(pertVo.getTaskStart(), ""))).orElse(0L);
+                Long aLong3 = Optional.ofNullable(DateUtils.parseDate(StringUtils.defaultIfBlank(pertVo.getEstimatedCompletion(), ""))).orElse(0L);
+                long complete = (long) ((aLong1 - aLong2) * weight) + aLong2;
+                long pertLong = complete +
+                        aLong1 -
+                        (aLong2 * 2)
+                        + 4 * ((aLong3)
+                        - (aLong2));
+                DecimalFormat df = new DecimalFormat("0.00");// 设置保留两位位数
+                String pert = df.format(pertLong / (1000 * 60 * 60 * 24 * 6));
+                pertVo.setPert(pert);
+                pertVos.add(pertVo);
+            }
+        }
+
+        return pertVos;
+    }
 }
 
 
