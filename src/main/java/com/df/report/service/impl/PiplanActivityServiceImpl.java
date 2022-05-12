@@ -68,6 +68,7 @@ public class PiplanActivityServiceImpl implements PiplanActivityService {
         Root root = criteriaQuery.from(PiplanActivity.class);
         Path id = root.get("id");
         Path projectRefId = root.get("projectRefId");
+        Path rootRefId = root.get("rootRefId");
         Path targetStartDate = root.get("targetStartDate");
 
         //子查询部分-Piproject
@@ -100,6 +101,13 @@ public class PiplanActivityServiceImpl implements PiplanActivityService {
                 or.add(cb.in(id).value(integers));
             }
             predicates.add(cb.or(or.toArray(new Predicate[0])));
+        }
+
+        if (projectId!=null){
+            predicates.add(cb.equal(projectRefId,projectId));
+        }
+        if (planId!=null){
+            predicates.add(cb.equal(rootRefId,planId));
         }
 
         criteriaQuery.select(root)
@@ -137,6 +145,7 @@ public class PiplanActivityServiceImpl implements PiplanActivityService {
         Root root = criteriaQuery.from(PiplanActivity.class);
         Path id = root.get("id");
         Path projectRefId = root.get("projectRefId");
+        Path rootRefId = root.get("rootRefId");
         Path targetStartDate = root.get("targetStartDate");
 
         //子查询部分-Piproject
@@ -167,6 +176,13 @@ public class PiplanActivityServiceImpl implements PiplanActivityService {
                 or.add(cb.in(id).value(integers));
             }
             predicates.add(cb.or(or.toArray(new Predicate[0])));
+        }
+
+        if (projectId!=null){
+            predicates.add(cb.equal(projectRefId,projectId));
+        }
+        if (planId!=null){
+            predicates.add(cb.equal(rootRefId,planId));
         }
 
         criteriaQuery.select(cb.count(root)).where(predicates.toArray(new Predicate[0]));
