@@ -1,11 +1,16 @@
 package com.df.report.service.impl;
 
 
+import com.df.report.mapper.PiprojectMapper;
 import com.df.report.model.*;
 import com.df.report.service.*;
 import com.df.report.util.DateUtils;
+import com.df.report.util.PageResult;
+import com.df.report.util.PageVO;
+import com.df.report.util.Result;
 import com.google.common.collect.Lists;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -13,11 +18,10 @@ import javax.persistence.EntityManager;
 import javax.persistence.TypedQuery;
 import javax.persistence.criteria.*;
 import java.sql.Timestamp;
+import java.text.DecimalFormat;
 import java.text.ParseException;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.Objects;
+import java.text.SimpleDateFormat;
+import java.util.*;
 
 /**
  * @author chenning
@@ -40,9 +44,11 @@ public class PiplanActivityServiceImpl implements PiplanActivityService {
     @Autowired
     private PiresourceAssignmentService piresourceAssignmentService;
 
+    @Autowired
+    PiprojectMapper piprojectMapper;
 
     @Override
-    public List<PiplanActivityVo> WorkDelayTable(String[] time, List<Integer> groupIds, String projectId, String planId) throws ParseException {
+    public List<PiplanActivityVo> WorkDelayTable(String[] time, List<Integer> groupIds, String projectId, String planId, PageResult pageResult) throws ParseException {
 
         String startTime = null;
         String endTime = null;
@@ -55,8 +61,6 @@ public class PiplanActivityServiceImpl implements PiplanActivityService {
             Date startDate = DateUtils.getStartTime(DateUtils.parseDate(time[0]));
             Date endDate = DateUtils.getEndTime(DateUtils.parseDate(time[1]));
         }
-
-
 
 
         CriteriaBuilder cb = em.getCriteriaBuilder();
@@ -80,17 +84,17 @@ public class PiplanActivityServiceImpl implements PiplanActivityService {
         subquery2.select(childId2);
 
 
-        List<Predicate>  predicates=new ArrayList<>();
+        List<Predicate> predicates = new ArrayList<>();
 //        predicates.add(cb.in(projectRefId).value(subquery1));
 //        predicates.add(cb.in(id).value(subquery2));
-        predicates.add(cb.or(cb.in(projectRefId).value(subquery1),cb.in(id).value(subquery2)));
+        predicates.add(cb.or(cb.in(projectRefId).value(subquery1), cb.in(id).value(subquery2)));
 
-        predicates.add(cb.between(targetStartDate,new Timestamp(DateUtils.parseDate(startTime)),new Timestamp(DateUtils.parseDate(endTime))));
+        predicates.add(cb.between(targetStartDate, new Timestamp(DateUtils.parseDate(startTime)), new Timestamp(DateUtils.parseDate(endTime))));
 
 
         List<Long> planActIds = functionApply.getPlanActIds(membershipLinkService::rolebobjectIds, piresourceService::resourceIds, piresourceAssignmentService::assignmentRsrcIds, groupIds);
-        if (CollectionUtils.isNotEmpty(planActIds)){
-            List<Predicate> or=new ArrayList<>();
+        if (CollectionUtils.isNotEmpty(planActIds)) {
+            List<Predicate> or = new ArrayList<>();
             List<List<Long>> partition = Lists.partition(planActIds, 900);
             for (List<Long> integers : partition) {
                 or.add(cb.in(id).value(integers));
@@ -98,44 +102,175 @@ public class PiplanActivityServiceImpl implements PiplanActivityService {
             predicates.add(cb.or(or.toArray(new Predicate[0])));
         }
 
-        criteriaQuery.select(root).where(predicates.toArray(new Predicate[0]));
+        criteriaQuery.select(root)
+                .where(predicates.toArray(new Predicate[0]));
         TypedQuery query = em.createQuery(criteriaQuery);
-        List<PiplanActivityVo> ids = query.getResultList();
+        if (pageResult.getEnble()) {
+            query.setFirstResult(pageResult.getPageRecord());
+            query.setMaxResults(pageResult.getPageSize());
+        }
+        List<PiplanActivity> piplanActivities = query.getResultList();
 
-        return null;
+        List<PiplanActivityVo> activityVos = changeActivityVos(piplanActivities, startTime, endTime);
+        return activityVos;
     }
 
 
+    @Override
+    public Integer WorkDelayTable(String[] time, List<Integer> groupIds, String projectId, String planId) throws ParseException {
 
-//    private void t(){
-//
-//        CriteriaBuilder cb = em.getCriteriaBuilder();
-//        CriteriaQuery criteriaQuery = cb.createQuery();
-//        Root root = criteriaQuery.from(PiplanActivity.class);
-//        Path id = root.get("id");
-//        Path projectRefId = root.get("projectRefId");
-//        Path targetStartDate = root.get("targetStartDate");
-//
-//        //子查询部分-Piproject
-//        Subquery<Piproject> subquery1 = criteriaQuery.subquery(Piproject.class);
-//        Root childRoot1 = subquery1.from(Piproject.class);
-//        Path childId1 = childRoot1.get("id");
-//        subquery1.select(childId1);
-//
-//
-//        //子查询部分-StexpectedFinishTime
-//        Subquery<StexpectedFinishTime> subquery2 = criteriaQuery.subquery(StexpectedFinishTime.class);
-//        Root childRoot2 = subquery2.from(StexpectedFinishTime.class);
-//        Path childId2 = childRoot1.get("planActivityRefId");
-//        subquery2.select(childId1);
-//
-//
-//        List<Predicate>  predicates=new ArrayList<>();
-//        predicates.add(cb.in(projectRefId).value(subquery1));
-//        predicates.add(cb.in(id).value(subquery2));
-//        predicates.add(cb.between(targetStartDate,new Timestamp()))
-//
-//    }
+        String startTime = null;
+        String endTime = null;
+        if (Objects.isNull(time)) {
+            Date startDate = DateUtils.getEndTime(DateUtils.getDate(System.currentTimeMillis(), 0, -3, 0, 0, 0, 0));
+            Date endDate = DateUtils.getStartTime(System.currentTimeMillis());
+            startTime = DateUtils.format(startDate, "yyyy-MM-dd HH:mm:ss");
+            endTime = DateUtils.format(endDate, "yyyy-MM-dd HH:mm:ss");
+        } else {
+            Date startDate = DateUtils.getStartTime(DateUtils.parseDate(time[0]));
+            Date endDate = DateUtils.getEndTime(DateUtils.parseDate(time[1]));
+        }
+
+
+        CriteriaBuilder cb = em.getCriteriaBuilder();
+        CriteriaQuery criteriaQuery = cb.createQuery();
+        Root root = criteriaQuery.from(PiplanActivity.class);
+        Path id = root.get("id");
+        Path projectRefId = root.get("projectRefId");
+        Path targetStartDate = root.get("targetStartDate");
+
+        //子查询部分-Piproject
+        Subquery<Piproject> subquery1 = criteriaQuery.subquery(Piproject.class);
+        Root childRoot1 = subquery1.from(Piproject.class);
+        Path childId1 = childRoot1.get("id");
+        subquery1.select(childId1);
+
+
+        //子查询部分-StexpectedFinishTime
+        Subquery<StexpectedFinishTime> subquery2 = criteriaQuery.subquery(StexpectedFinishTime.class);
+        Root childRoot2 = subquery2.from(StexpectedFinishTime.class);
+        Path childId2 = childRoot2.get("planActivityRefId");
+        subquery2.select(childId2);
+
+
+        List<Predicate> predicates = new ArrayList<>();
+        predicates.add(cb.or(cb.in(projectRefId).value(subquery1), cb.in(id).value(subquery2)));
+
+        predicates.add(cb.between(targetStartDate, new Timestamp(DateUtils.parseDate(startTime)), new Timestamp(DateUtils.parseDate(endTime))));
+
+
+        List<Long> planActIds = functionApply.getPlanActIds(membershipLinkService::rolebobjectIds, piresourceService::resourceIds, piresourceAssignmentService::assignmentRsrcIds, groupIds);
+        if (CollectionUtils.isNotEmpty(planActIds)) {
+            List<Predicate> or = new ArrayList<>();
+            List<List<Long>> partition = Lists.partition(planActIds, 900);
+            for (List<Long> integers : partition) {
+                or.add(cb.in(id).value(integers));
+            }
+            predicates.add(cb.or(or.toArray(new Predicate[0])));
+        }
+
+        criteriaQuery.select(cb.count(root)).where(predicates.toArray(new Predicate[0]));
+        TypedQuery<Long> query = em.createQuery(criteriaQuery);
+        Integer singleResult = query.getSingleResult().intValue();
+        return singleResult;
+    }
+
+
+    private List<PiplanActivityVo> changeActivityVos(List<PiplanActivity> piplanActivities, String startTime, String endTime) throws ParseException {
+        List<PiplanActivityVo> activityVos = new ArrayList<>();
+        for (PiplanActivity act : piplanActivities) {
+            PiplanActivityVo activityVo = new PiplanActivityVo();
+            activityVo.setActivityId(act.getId().toString());
+            activityVo.setActivityName(act.getName());
+            activityVo.setTargetStartTime(act.getTargetStartDate() == null ? "" : DateUtils.getDateToString(act.getTargetStartDate().getTime(), "yyyy-MM-dd HH:mm:ss"));
+            activityVo.setByTime(act.getTargetEndDate() == null ? "" : DateUtils.getDateToString(act.getTargetEndDate().getTime(), "yyyy-MM-dd HH:mm:ss"));
+            activityVo.setExpectedFinishTime(act.getExpectEndDate() == null ? "" : DateUtils.getDateToString(act.getExpectEndDate().getTime(), "yyyy-MM-dd HH:mm:ss"));
+            activityVo.setActualEndTime(act.getActualEndDate() == null ? "" : DateUtils.getDateToString(act.getActualEndDate().getTime(), "yyyy-MM-dd HH:mm:ss"));
+            activityVo.setActualStartTime(act.getActualStartDate() == null ? "" : DateUtils.getDateToString(act.getActualStartDate().getTime(), "yyyy-MM-dd HH:mm:ss"));
+            Optional<Piproject> optionalPiproject = piprojectMapper.findById(act.getProjectRefId());
+            if (optionalPiproject.isPresent()) {
+                activityVo.setProjectName(optionalPiproject.get().getProjectName());
+            }
+            activityVos.add(activityVo);
+        }
+
+        // 计算时间周数
+        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
+
+        long start = startTime == null ? 0 : formatter.parse(startTime).getTime();
+        long end = endTime == null ? 0 : formatter.parse(endTime).getTime();
+        double weeks = (end - start) / (1000 * 60 * 60 * 24 * 7.0);
+        long week = (long) Math.ceil(weeks);
+        DecimalFormat df = new DecimalFormat("0.00");// 设置保留两位位数
+        //返回数据
+        List<PiplanActivityVo> resultList = new ArrayList();
+        for (long i = 1; i <= week; i++) {
+            // 每周开始时间
+            long startLong = start + (i - 1) * 1000 * 60 * 60 * 24 * 7;
+            // 每周结束时间
+            long endLong = start + i * 1000 * 60 * 60 * 24 * 7;
+
+            for (PiplanActivityVo act : activityVos) {
+                String taskStr = act.getTargetStartTime();
+//                String taskStr = act.getByTime();
+                long taskLong = StringUtils.isBlank(taskStr) ? 0 : formatter.parse(taskStr).getTime();
+                if (taskLong >= startLong && taskLong < endLong) {
+                    long currentStr = new Date().getTime();//当前时间
+                    String byTimeStr = act.getByTime();//计划完成时间
+                    long btTImeLong = StringUtils.isBlank(byTimeStr) ? 0 : formatter.parse(byTimeStr).getTime();
+                    String actualEnd = act.getActualEndTime();//实际完成时间
+                    long actualEndLong = StringUtils.isBlank(actualEnd) ? 0 : formatter.parse(actualEnd).getTime();
+                    String expectedFinishStr = act.getExpectedFinishTime();//预估完成时间
+                    long expectedFinishLong = StringUtils.isBlank(expectedFinishStr) ? 0 : formatter.parse(expectedFinishStr).getTime();
+                    String targetStartTimeStr = act.getTargetStartTime();//预估完成时间
+                    long targetStartTimeStrLong = StringUtils.isBlank(targetStartTimeStr) ? 0 : formatter.parse(targetStartTimeStr).getTime();
+                    String taskTypa = null;
+                    //任务状态1，正常执行
+                    if (actualEndLong == 0 && btTImeLong > expectedFinishLong && btTImeLong >= currentStr) {
+                        taskTypa = "normal";
+                    }
+                    //任务状态2，可能逾期
+                    if (actualEndLong == 0 && btTImeLong <= expectedFinishLong) {
+                        taskTypa = "isoverdue";
+                    }
+                    //任务状态3，已完成
+                    if (actualEndLong != 0 && btTImeLong >= actualEndLong) {
+                        taskTypa = "finished";
+                    }
+                    //任务状态4，逾期未完成
+                    if (actualEndLong == 0 && btTImeLong < currentStr) {
+                        taskTypa = "overdue";
+                    }
+                    //任务状态5，逾期已完成
+                    if (actualEndLong != 0 && btTImeLong < actualEndLong) {
+                        taskTypa = "red";
+                    }
+                    act.setTaskType(taskTypa);
+                    //横坐标
+//                    long X = (taskLong - startLong)%(1000 * 60 * 60 * 24 * 7)+1;
+
+//                    double x = (taskLong - start) / (1000 * 60 * 60 * 24 * 7.0) + 1 + Math.random() * 0.3;
+                    double x = (currentStr - taskLong) / (1000 * 60 * 60 * 24 * 7.0) + 1 + Math.random() * 0.3;
+                    String Xaxis = df.format(x);
+                    act.setXaxis(Double.parseDouble(Xaxis));
+                    //偏差值
+                    String deviation = "0";
+                    if (actualEndLong != 0) {
+                        deviation = df.format((btTImeLong - actualEndLong) / (1000 * 60 * 60 * 24));
+                    } else if (actualEndLong == 0 && targetStartTimeStrLong < currentStr) {
+                        deviation = df.format((btTImeLong - currentStr) / (1000 * 60 * 60 * 24));
+                    } else {
+                        deviation = "0";
+                    }
+                    act.setDeviation(Double.parseDouble(deviation));
+                    resultList.add(act);
+                }
+            }
+        }
+        return activityVos;
+    }
+
+
 }
 
 

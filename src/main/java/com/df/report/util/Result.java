@@ -9,10 +9,13 @@ import lombok.Data;
  */
 @Data
 public class Result<T> {
+
+
     private boolean flag;//是否成功
     private Integer code;// 返回码
     private String message;//返回信息
     private T content;// 返回数据
+    private PageResult pageResult;//分页信息
 
     public Result() {
     }
@@ -34,6 +37,12 @@ public class Result<T> {
         this.content = content;
     }
 
+    public Result(boolean flag, Integer code, String message, T content, PageResult pageResult) {
+        this(flag, code, message);
+        this.content = content;
+        this.pageResult = pageResult;
+    }
+
 
     public static <T> Result ok() {
         return new Result<T>(true, 200, "success");
@@ -53,5 +62,14 @@ public class Result<T> {
 
     public static <T> Result error() {
         return new Result<T>(false, 400, "error");
+    }
+
+
+    public static <T> Result okpage(T content, PageResult pageResult) {
+        if (!pageResult.getEnble()) {
+            pageResult=new PageResult(pageResult.getEnble(),"分页功能未开启");
+        }
+        return new Result<T>(true, 200, "success", content, pageResult);
+
     }
 }

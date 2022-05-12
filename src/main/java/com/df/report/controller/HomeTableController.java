@@ -3,11 +3,15 @@ package com.df.report.controller;
 import com.df.report.model.PiplanActivityVo;
 import com.df.report.service.PiplanActivityService;
 import com.df.report.service.PiprojectService;
+import com.df.report.util.PageResult;
+import com.df.report.util.PageVO;
 import com.df.report.util.Result;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -41,9 +45,12 @@ public class HomeTableController {
     public Result WorkDelayTable(String[] time,
                                  @RequestParam(value = "groupIds", required = false) List<Integer> groupIds,
                                  String projectId,
-                                 String planId) throws ParseException {
-        List<PiplanActivityVo> piplanActivityVos = piplanActivityService.WorkDelayTable(time, groupIds, projectId, planId);
-        return Result.ok(piplanActivityVos);
+                                 String planId,
+                                 PageVO pageVO) throws ParseException {
+        Integer count = piplanActivityService.WorkDelayTable(time, groupIds, projectId, planId);
+        PageResult pageResult = PageResult.ok(pageVO, count);
+        List<PiplanActivityVo> piplanActivityVos = piplanActivityService.WorkDelayTable(time, groupIds, projectId, planId, pageResult);
+        return Result.okpage(piplanActivityVos, pageResult);
     }
 
 

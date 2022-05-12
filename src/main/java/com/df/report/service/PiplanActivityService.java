@@ -2,6 +2,8 @@ package com.df.report.service;
 
 
 import com.df.report.model.PiplanActivityVo;
+import com.df.report.util.PageResult;
+import com.df.report.util.PageVO;
 
 import java.text.ParseException;
 import java.util.List;
@@ -14,6 +16,8 @@ import java.util.List;
 public interface PiplanActivityService{
 
 
-    List<PiplanActivityVo> WorkDelayTable(String[] time, List<Integer> groupIds, String projectId, String planId)throws ParseException;
+    List<PiplanActivityVo> WorkDelayTable(String[] time, List<Integer> groupIds, String projectId, String planId, PageResult pageResult)throws ParseException;
+
+    Integer WorkDelayTable(String[] time, List<Integer> groupIds, String projectId, String planId)throws ParseException;
 
 }
