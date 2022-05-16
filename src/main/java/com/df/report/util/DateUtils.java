@@ -299,7 +299,9 @@ public class DateUtils {
     public static Long calculateTimeDifference(Long startMilliseconds, Long endMilliseconds, ChronoUnit chronoUnit) {
         LocalDate startLocalDate = millisecondsToLocalDate(startMilliseconds);
         LocalDate endLocalDate = millisecondsToLocalDate(endMilliseconds);
-        return chronoUnit.between(startLocalDate, endLocalDate);
+        ZonedDateTime startZonedDateTime = startLocalDate.atStartOfDay().atZone(ZoneId.systemDefault());
+        ZonedDateTime endZonedDateTime = endLocalDate.atStartOfDay().atZone(ZoneId.systemDefault());
+        return chronoUnit.between(startZonedDateTime, endZonedDateTime);
     }
 
 
