@@ -2,11 +2,14 @@ package com.df.report.controller;
 
 import com.df.report.model.PiplanActivityVo;
 import com.df.report.model.ProjectLeveVo;
+import com.df.report.redis.RedisService;
 import com.df.report.service.PiplanActivityService;
 import com.df.report.service.PiprojectService;
-import com.df.report.util.PageResult;
-import com.df.report.util.PageVO;
-import com.df.report.util.Result;
+import com.df.report.util.falsePaging.PageModel;
+import com.df.report.util.falsePaging.PaginationUtil;
+import com.df.report.util.truePaging.PageResult;
+import com.df.report.util.truePaging.PageVO;
+import com.df.report.util.truePaging.Result;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
@@ -34,6 +37,8 @@ public class HomeTableController {
     PiplanActivityService piplanActivityService;
     @Autowired
     PiprojectService piprojectService;
+    @Autowired
+    RedisService redisService;
 
     /**
      * 大屏展示工作任务延期
@@ -46,9 +51,15 @@ public class HomeTableController {
                                  String projectId,
                                  String planId,
                                  PageVO pageVO) throws ParseException {
-        Integer count = piplanActivityService.WorkDelayTable(time, groupIds, projectId, planId);
+
+        Integer count = piplanActivityService.WorkDelayTableOnCache(time, groupIds, projectId, planId, PageResult.ok()).size();
+//        count = piplanActivityService.WorkDelayTable(time, groupIds, projectId, planId);
         PageResult pageResult = PageResult.ok(pageVO, count);
-        List<PiplanActivityVo> piplanActivityVos = piplanActivityService.WorkDelayTable(time, groupIds, projectId, planId, pageResult);
+        List<PiplanActivityVo> piplanActivityVos = piplanActivityService.WorkDelayTableOnCache(time, groupIds, projectId, planId, pageResult);
+        if (pageVO.getEnable()) {//缓存假分页
+            PageModel<PiplanActivityVo> pagination = PaginationUtil.pagination(piplanActivityVos, pageVO.getSize(), pageVO.getCurrent());
+            piplanActivityVos = pagination.getRecords();
+        }
         return Result.okpage(piplanActivityVos, pageResult);
     }
 

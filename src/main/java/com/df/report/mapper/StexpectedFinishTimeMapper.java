@@ -1,7 +1,7 @@
 package com.df.report.mapper;
 
 
-import com.df.report.model.StexpectedFinishTime;
+import com.df.report.model.DFExpectedFinishTime;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -12,10 +12,10 @@ import java.util.List;
 * @createDate 2022-05-11 16:52:47
 * @Entity com.df.report.model.StexpectedFinishTime
 */
-public interface StexpectedFinishTimeMapper extends JpaRepository<StexpectedFinishTime,Long>  {
+public interface StexpectedFinishTimeMapper extends JpaRepository<DFExpectedFinishTime,Long>  {
 
 
-    List<StexpectedFinishTime> findByPlanActivityRefIdIs(Long id);
+    List<DFExpectedFinishTime> findByPlanActivityRefIdIs(Long id);
 }
 
 

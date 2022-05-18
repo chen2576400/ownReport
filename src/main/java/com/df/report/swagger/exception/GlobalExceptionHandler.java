@@ -1,8 +1,7 @@
 package com.df.report.swagger.exception;
 
-import com.df.report.util.Result;
+import com.df.report.util.truePaging.Result;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.amqp.core.ReturnedMessage;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.BindException;
 import org.springframework.validation.BindingResult;

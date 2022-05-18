@@ -22,4 +22,11 @@ public interface FunctionApply {
                                 List<Integer> ids);
 
 
+
+//    List<Long> getPlanActIdsOnCache(Function<List<Integer>, List<Long>> function1,
+//                             Function<List<Long>, List<Long>> function2,
+//                             Function<List<Long>, List<Long>> function3,
+//                             List<Integer> ids);
+
+
 }

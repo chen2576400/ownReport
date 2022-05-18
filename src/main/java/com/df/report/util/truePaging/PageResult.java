@@ -1,7 +1,6 @@
-package com.df.report.util;
+package com.df.report.util.truePaging;
 
 import lombok.Data;
-import org.springframework.data.domain.Page;
 
 /**
  * @description:
@@ -43,6 +42,15 @@ public class PageResult {
     public PageResult(Boolean enble,String page) {
         this.enble=enble;
         this.page = page;
+    }
+
+
+    public PageResult(Boolean enble) {
+        this.enble=enble;
+    }
+
+    public static  PageResult ok(){
+        return new PageResult(false);
     }
 
     public static PageResult ok(PageVO pageVO, Integer count) {

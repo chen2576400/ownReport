@@ -1,7 +1,7 @@
 package com.df.report.controller;
 
 import com.df.report.service.PiplanActivityService;
-import com.df.report.util.Result;
+import com.df.report.util.truePaging.Result;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiImplicitParam;
 import io.swagger.annotations.ApiOperation;

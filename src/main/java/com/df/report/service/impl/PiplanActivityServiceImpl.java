@@ -5,9 +5,11 @@ import com.df.report.mapper.PiplanActivityMapper;
 import com.df.report.mapper.PiprojectMapper;
 import com.df.report.mapper.StexpectedFinishTimeMapper;
 import com.df.report.model.*;
+import com.df.report.redis.RedisConstant;
+import com.df.report.redis.RedisService;
 import com.df.report.service.*;
 import com.df.report.util.DateUtils;
-import com.df.report.util.PageResult;
+import com.df.report.util.truePaging.PageResult;
 import com.google.common.collect.Lists;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -57,9 +59,11 @@ public class PiplanActivityServiceImpl implements PiplanActivityService {
     @Autowired
     PiplanActivityMapper activityMapper;
 
+    @Autowired
+    RedisService redisService;
+
     @Override
     public List<PiplanActivityVo> WorkDelayTable(String[] time, List<Integer> groupIds, String projectId, String planId, PageResult pageResult) throws ParseException {
-
         String startTime = null;
         String endTime = null;
         if (Objects.isNull(time)) {
@@ -91,8 +95,8 @@ public class PiplanActivityServiceImpl implements PiplanActivityService {
 
 
         //子查询部分-StexpectedFinishTime
-        Subquery<StexpectedFinishTime> subquery2 = criteriaQuery.subquery(StexpectedFinishTime.class);
-        Root childRoot2 = subquery2.from(StexpectedFinishTime.class);
+        Subquery<DFExpectedFinishTime> subquery2 = criteriaQuery.subquery(DFExpectedFinishTime.class);
+        Root childRoot2 = subquery2.from(DFExpectedFinishTime.class);
         Path childId2 = childRoot2.get("planActivityRefId");
         subquery2.select(childId2);
 
@@ -137,6 +141,31 @@ public class PiplanActivityServiceImpl implements PiplanActivityService {
 
 
     @Override
+    public List<PiplanActivityVo> WorkDelayTableOnCache(String[] time, List<Integer> groupIds, String projectId, String planId, PageResult pageResult) throws ParseException {
+        List<PiplanActivityVo> activityVos = null;
+        Integer count=null;
+        String valueskey = RedisConstant.REDIS_CACHENAME_ACT;
+        String countskey = RedisConstant.REDIS_CACHENAME_ACT_COUNT;
+        if (redisService.exists(valueskey)&&redisService.exists(countskey)) {
+            activityVos = redisService.get(valueskey);
+            count=redisService.get(countskey);
+            if (CollectionUtils.isEmpty(activityVos)||count==null) {
+                activityVos = WorkDelayTable(time, groupIds, projectId, planId, pageResult);
+                redisService.set(valueskey, activityVos, 24 * 60 * 60);
+                redisService.set(countskey,activityVos.size(), 24 * 60 * 60);
+            }
+        } else {
+            activityVos = WorkDelayTable(time, groupIds, projectId, planId, pageResult);
+            redisService.set(valueskey, activityVos, 24 * 60 * 60);
+            redisService.set(countskey,activityVos.size(), 24 * 60 * 60);
+        }
+        if (CollectionUtils.isEmpty(activityVos)){
+            return  new ArrayList<>();
+        }
+        return  activityVos;
+    }
+
+    @Override
     public Integer WorkDelayTable(String[] time, List<Integer> groupIds, String projectId, String planId) throws ParseException {
 
         String startTime = null;
@@ -168,8 +197,8 @@ public class PiplanActivityServiceImpl implements PiplanActivityService {
 
 
         //子查询部分-StexpectedFinishTime
-        Subquery<StexpectedFinishTime> subquery2 = criteriaQuery.subquery(StexpectedFinishTime.class);
-        Root childRoot2 = subquery2.from(StexpectedFinishTime.class);
+        Subquery<DFExpectedFinishTime> subquery2 = criteriaQuery.subquery(DFExpectedFinishTime.class);
+        Root childRoot2 = subquery2.from(DFExpectedFinishTime.class);
         Path childId2 = childRoot2.get("planActivityRefId");
         subquery2.select(childId2);
 
@@ -301,16 +330,16 @@ public class PiplanActivityServiceImpl implements PiplanActivityService {
 
     @Override
     public List<PertVo> pertTable(String activeId) {
-        List<StexpectedFinishTime> stexpectedFinishTimes = stexpectedFinishTimeMapper.findByPlanActivityRefIdIs(Long.valueOf(activeId));
+        List<DFExpectedFinishTime> DFExpectedFinishTimes = stexpectedFinishTimeMapper.findByPlanActivityRefIdIs(Long.valueOf(activeId));
         List<PertVo> pertVos = new ArrayList<>();
-        for (StexpectedFinishTime stexpectedFinishTime : stexpectedFinishTimes) {
-            Optional<PiplanActivity> opAct = activityMapper.findById(stexpectedFinishTime.getPlanActivityRefId());
+        for (DFExpectedFinishTime DFExpectedFinishTime : DFExpectedFinishTimes) {
+            Optional<PiplanActivity> opAct = activityMapper.findById(DFExpectedFinishTime.getPlanActivityRefId());
             if (opAct.isPresent()) {
                 PiplanActivity piplanActivity = opAct.get();
                 PertVo pertVo = new PertVo();
                 pertVo.setTaskStart(piplanActivity.getTargetStartDate() == null ? "" : DateUtils.getDateToString(piplanActivity.getTargetStartDate().getTime(), "yyyy-MM-dd HH:mm:ss"));
                 pertVo.setTaskComplete(piplanActivity.getTargetEndDate() == null ? "" : DateUtils.getDateToString(piplanActivity.getTargetEndDate().getTime(), "yyyy-MM-dd HH:mm:ss"));
-                pertVo.setEstimatedCompletion(stexpectedFinishTime.getExpectedFinishTime() == null ? "" : DateUtils.getDateToString(stexpectedFinishTime.getExpectedFinishTime().getTime(), "yyyy-MM-dd HH:mm:ss"));
+                pertVo.setEstimatedCompletion(DFExpectedFinishTime.getExpectedFinishTime() == null ? "" : DateUtils.getDateToString(DFExpectedFinishTime.getExpectedFinishTime().getTime(), "yyyy-MM-dd HH:mm:ss"));
                 pertVo.setActualStart(piplanActivity.getActualStartDate() == null ? "" : DateUtils.getDateToString(piplanActivity.getActualStartDate().getTime(), "yyyy-MM-dd HH:mm:ss"));
                 Long aLong1 = Optional.ofNullable(DateUtils.parseDate(StringUtils.defaultIfBlank(pertVo.getTaskComplete(), ""))).orElse(0L);
                 Long aLong2 = Optional.ofNullable(DateUtils.parseDate(StringUtils.defaultIfBlank(pertVo.getTaskStart(), ""))).orElse(0L);

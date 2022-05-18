@@ -1,15 +1,17 @@
 package com.df.report.model;
 
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.Id;
 import java.io.Serializable;
 import java.util.Date;
-import javax.persistence.*;
 
 /**
  * 
  * @TableName stexpected_finish_time
  */
 @Entity
-public class StexpectedFinishTime implements Serializable {
+public class DFExpectedFinishTime implements Serializable {
     /**
      * 
      */
